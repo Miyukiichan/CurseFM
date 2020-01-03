@@ -1,0 +1,2 @@
+# CurseFM
+Ncurses file manager
