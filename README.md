@@ -1,2 +1,2 @@
 # CurseFM
-Ncurses file manager
+An Ncurses file manager written in C
