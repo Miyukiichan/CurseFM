@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
     if (reprint || max != old_max) {
       /*Create arrays for grouping folders and sorting alphabetically*/
       if (cursor_index + 1 > max)
-        move_cursor(max - 1);
+        cursor_index = max - 1;
       int file_count = max - dir_count;
       current_file_index = files;
       current_dir_index = dirs;
