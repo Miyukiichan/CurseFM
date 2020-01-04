@@ -136,6 +136,7 @@ int main(int argc, char **argv) {
       }
     }
     wrefresh(win);
+    usleep(5000);
   }
   endwin();
   return 0;
