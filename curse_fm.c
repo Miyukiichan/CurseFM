@@ -7,13 +7,16 @@
 
 typedef struct File {
   char * name;
-  int is_directory;
   struct File * next;
 }FileT;
 
 int max, cursor_index, height, width, max_x, max_y;
-WINDOW * win = NULL;
+int title_height = 1;
+WINDOW *win = NULL;
+WINDOW *title = NULL;
 
+/* Moves the cursor down (positive) or up (negative). If it goes past the limit, it will be set too the
+ * first item if it is too far down, and the last item if too far up.*/
 void move_wrap_cursor(const int amount) {
   if (amount > 0) {
     cursor_index = cursor_index < ((max - 1) - (amount - 1)) ? cursor_index + amount : 0;
@@ -23,6 +26,7 @@ void move_wrap_cursor(const int amount) {
   }
 }
 
+/*Same as previous function but stays at the limit as opposed to wrapping around*/
 void move_cursor(const int amount) {
   if (amount > 0) {
     cursor_index = cursor_index < (max - (amount - 1)) ? cursor_index + amount : max;
@@ -32,18 +36,20 @@ void move_cursor(const int amount) {
   }
 }
 
+/*Resize and reinitialize the main window*/
 void update_term_dimensions() {
-  height = max_y - 2;
+  height = max_y - 2 - title_height;
   width = max_x - 2;
   wborder(win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
   if (win) {
     wrefresh(win);
     delwin(win);
   }
-  win = newwin(max_y, max_x, 0, 0);
+  win = newwin(max_y - title_height, max_x, title_height, 0);
   nodelay(win, 1);
 }
 
+/*File list functions*/
 FileT * new_file() {
   FileT *file = (FileT*)malloc(sizeof(FileT));
   file->next = NULL;
@@ -65,8 +71,11 @@ FileT *append_file(FileT *current, struct dirent *ent) {
   return current->next;
 }
 
+/* Prints linked list of files starting at a particular offset and going down one by one. 
+ * Finishes when linked list is finished or when the safety value is reached (ie. the size of the list)
+ * The cursor position is indicated by inverting the background and foreground colours.*/
 void print_files(FileT *file, const int start, const int safety) {
-  for (int i = 0; i < safety && file; i++) {
+  for (int i = 0; i < safety && i < height && file; i++) {
     if (i + start - 1 == cursor_index)
       wattron(win, A_REVERSE);
     mvwprintw(win, start + i, 1, file->name);
@@ -77,19 +86,20 @@ void print_files(FileT *file, const int start, const int safety) {
 
 int main(int argc, char **argv) {
   /*Initialise ncurses and global variables*/
-  max = 0;
-  cursor_index = 0;
+  max = 0; //Total amount of files and folders
+  cursor_index = 0; //Current item selected
   int exit = 0;
   initscr();
-  curs_set(0);
+  curs_set(0); //Remove the cmd prompt cursor
   noecho();
   start_color();
   getmaxyx(stdscr,max_y,max_x);
   update_term_dimensions(max_y, max_x);
-  char pwd[PATH_MAX];
-  FileT *files = NULL;
-  FileT *dirs = NULL;
-  if (!getcwd(pwd, sizeof(pwd)))
+  title = newwin(title_height, max_x, 0, 0);
+  char current_directory[PATH_MAX];
+  FileT *dirs = NULL; //Folders
+  FileT *files = NULL; //Everything else
+  if (!getcwd(current_directory, sizeof(current_directory)))
     exit = 1;
   int reprint = 0;
   /*Main loop*/
@@ -101,7 +111,7 @@ int main(int argc, char **argv) {
     int dir_count = 0;
     max = 0;
     DIR *dir;
-    if (!(dir = opendir(pwd))) {
+    if (!(dir = opendir(current_directory))) {
       exit = 1;
       continue;
     }
@@ -110,7 +120,7 @@ int main(int argc, char **argv) {
     dirs = free_files(dirs);
     FileT *current_file_index = files;
     FileT *current_dir_index = dirs;
-    /*Read current directory into linked list*/
+    /*Read current directory into linked lists*/
     struct dirent *ent;
     while ((ent = readdir(dir))) {
       char * name = ent->d_name;
@@ -125,23 +135,28 @@ int main(int argc, char **argv) {
       }
     }
     closedir(dir);
-    /*Print the directory contents only when ncessary*/
+    /*Print the directory contents only when necessary*/
     if (reprint || max != old_max) {
       /*Create arrays for grouping folders and sorting alphabetically*/
-      if (cursor_index + 1 > max)
-        cursor_index = max - 1;
+      cursor_index = cursor_index + 1 > max ? max - 1 : cursor_index;
       int file_count = max - dir_count;
       current_file_index = files;
       current_dir_index = dirs;
       wclear(win);
+      wclear(title);
       box(win, 0, 0);
       print_files(dirs, 1, dir_count);
       print_files(files, dir_count + 1, file_count);
       char progress[10];
-      sprintf(progress, "%d/%d", cursor_index + 1, max);
-      mvwprintw(win, height, 1, progress);
+      sprintf(progress, "[%d/%d]", cursor_index + 1, max);
+      //mvwprintw(win, height, 1, progress);
+      int offset = strlen(current_directory) + 2;
+      mvwprintw(title, 0, offset, progress);
+      mvwprintw(title, 0, 1, current_directory);
+      wrefresh(title);
     }
     reprint = 1;
+    /*Key input*/
     char c = wgetch(win);
     const char * ch = keyname(c);
     switch (c) {

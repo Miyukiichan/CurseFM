@@ -12,3 +12,7 @@ An Ncurses file manager written in C. Ranger BTFO.
 - Colours
 - Open files
 - File/image previews
+
+# Bugs
+
+- Resizing the terminal window causes segfault
