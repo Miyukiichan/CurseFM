@@ -5,15 +5,20 @@
 #include "dirent.h"
 #include "stdlib.h"
 
+typedef struct File {
+  char * name;
+  struct File * next;
+}FileT;
+
 int max, cursor_index, height, width, max_x, max_y;
 WINDOW * win = NULL;
 
 void move_wrap_cursor(const int amount) {
   if (amount > 0) {
-    cursor_index = cursor_index < (max - (amount - 1)) ? cursor_index + amount : 0;
+    cursor_index = cursor_index < ((max - 1) - (amount - 1)) ? cursor_index + amount : 0;
   }
   else if (amount < 0) {
-    cursor_index = cursor_index > (0 - (amount + 1)) ? cursor_index + amount : max;
+    cursor_index = cursor_index > (0 - (amount + 1)) ? cursor_index + amount : (max - 1);
   }
 }
 
@@ -35,6 +40,12 @@ void update_term_dimensions() {
     delwin(win);
   }
   win = newwin(max_y, max_x, 0, 0);
+  nodelay(win, 1);
+}
+
+FileT * new_file() {
+  FileT *file = (FileT*)malloc(sizeof(FileT));
+  file->next = NULL;
 }
 
 int main(int argc, char **argv) {
@@ -47,42 +58,56 @@ int main(int argc, char **argv) {
   start_color();
   getmaxyx(stdscr,max_y,max_x);
   update_term_dimensions(max_y, max_x);
+  char pwd[PATH_MAX];
+  FileT *files = NULL;
+  if (!getcwd(pwd, sizeof(pwd)))
+    exit = 1;
+  int reprint = 0;
   while (!exit) {
     if (is_term_resized(max_y, max_x)) {
       update_term_dimensions();
     }
-    wclear(win);
-    box(win, 0, 0);
+    int old_max = max;
     max = 0;
-    char pwd[PATH_MAX];
-    if (!getcwd(pwd, sizeof(pwd)))
-      mvprintw(0, 0, "Unknown");
-    else {
-      DIR *dir;
-      if ((dir = opendir(pwd))) {
-        max = 0;
-        struct dirent *ent;
-        while ((ent = readdir(dir)) && max < 10) {
-          char * name = ent->d_name;
-          if (strcmp(name, ".") && strcmp(name, "..")) {
-            if (max == cursor_index)
-              wattron(win, A_REVERSE);
-            mvwprintw(win, max + 1, 1, ent->d_name);
-            max++;
-            wattroff(win, A_REVERSE);
-          }
-        } 
+    DIR *dir;
+    if ((dir = opendir(pwd))) {
+      struct dirent *ent;
+      FileT *current_file_index = files;
+      while (current_file_index) {
+        FileT *temp = current_file_index->next;
+        free(current_file_index);
+        current_file_index = temp;
+      }
+      files = new_file();
+      current_file_index = files;
+      while ((ent = readdir(dir))) {
+        char * name = ent->d_name;
+        if (strcmp(name, ".") && strcmp(name, "..")) {
+          current_file_index->name = name;
+          current_file_index->next = new_file();
+          current_file_index = current_file_index->next;
+          max++;
+        }
+      }
+      if (reprint || max != old_max) {
+        wclear(win);
+        box(win, 0, 0);
+        current_file_index = files;
+        for (int i = 0; i < max && current_file_index; i++) {
+          if (i == cursor_index)
+            wattron(win, A_REVERSE);
+          mvwprintw(win, i + 1, 1, current_file_index->name);
+          wattroff(win, A_REVERSE);
+          current_file_index = current_file_index->next;
+        }
       }
       closedir(dir);
-      char * progress = malloc(sizeof(char) * 10);
-      progress[0] = cursor_index + 1 + '0';
-      progress[1] = '/';
-      progress[2] = max + '0';
-      mvwprintw(win, 12, 1, progress);
-      free(progress);
+      char progress[10];
+      sprintf(progress, "%d/%d", cursor_index + 1, max);
+      mvwprintw(win, height, 1, progress);
+      reprint = 1;
       char c = wgetch(win);
       const char * ch = keyname(c);
-      max--;
       switch (c) {
         case 'q':
           exit = 1;
@@ -97,7 +122,7 @@ int main(int argc, char **argv) {
           cursor_index = 0;
           break;
         case 'G':
-          cursor_index = max;
+          cursor_index = max - 1;
           break;
         default :
           if (!strcmp(ch, "^D")) {
@@ -106,6 +131,8 @@ int main(int argc, char **argv) {
           if (!strcmp(ch, "^U")) {
             move_cursor(-10);
           }
+          else
+            reprint = 0;
       }
     }
     wrefresh(win);
