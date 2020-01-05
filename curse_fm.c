@@ -13,6 +13,7 @@ typedef struct File {
 int max, cursor_index, height, width, max_x, max_y;
 int title_height = 1;
 WINDOW *win = NULL;
+WINDOW *preview = NULL;
 WINDOW *title = NULL;
 
 /* Moves the cursor down (positive) or up (negative). If it goes past the limit, it will be set too the
@@ -29,7 +30,7 @@ void move_wrap_cursor(const int amount) {
 /*Same as previous function but stays at the limit as opposed to wrapping around*/
 void move_cursor(const int amount) {
   if (amount > 0) {
-    cursor_index = cursor_index < (max - (amount - 1)) ? cursor_index + amount : max;
+    cursor_index = cursor_index < (max - (amount - 1)) ? cursor_index + amount : (max - 1);
   }
   else if (amount < 0) {
     cursor_index = cursor_index > (0 - (amount + 1)) ? cursor_index + amount : 0;
@@ -39,13 +40,15 @@ void move_cursor(const int amount) {
 /*Resize and reinitialize the main window*/
 void update_term_dimensions() {
   height = max_y - 2 - title_height;
-  width = max_x - 2;
+  width = (max_x / 2) - 2;
   wborder(win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
   if (win) {
     wrefresh(win);
     delwin(win);
   }
-  win = newwin(max_y - title_height, max_x, title_height, 0);
+  win = newwin(max_y - title_height, (max_x / 2) - 1, title_height, 0);
+  preview = newwin(max_y - title_height, max_x / 2 + 1, title_height, width + 1);
+  title = newwin(title_height, max_x, 0, 0);
   nodelay(win, 1);
 }
 
@@ -95,7 +98,6 @@ int main(int argc, char **argv) {
   start_color();
   getmaxyx(stdscr,max_y,max_x);
   update_term_dimensions(max_y, max_x);
-  title = newwin(title_height, max_x, 0, 0);
   char current_directory[PATH_MAX];
   FileT *dirs = NULL; //Folders
   FileT *files = NULL; //Everything else
@@ -143,8 +145,10 @@ int main(int argc, char **argv) {
       current_file_index = files;
       current_dir_index = dirs;
       wclear(win);
+      wclear(preview);
       wclear(title);
       box(win, 0, 0);
+      box(preview, 0, 0);
       print_files(dirs, 1, dir_count);
       print_files(files, dir_count + 1, file_count);
       char progress[10];
@@ -154,6 +158,7 @@ int main(int argc, char **argv) {
       mvwprintw(title, 0, offset, progress);
       mvwprintw(title, 0, 1, current_directory);
       wrefresh(title);
+      wrefresh(preview);
     }
     reprint = 1;
     /*Key input*/
@@ -177,10 +182,10 @@ int main(int argc, char **argv) {
         break;
       default :
         if (!strcmp(ch, "^D")) {
-          move_cursor(10);
+          move_cursor(height - 1);
         }
-        if (!strcmp(ch, "^U")) {
-          move_cursor(-10);
+        else if (!strcmp(ch, "^U")) {
+          move_cursor(-height + 1);
         }
         else
           reprint = 0;
