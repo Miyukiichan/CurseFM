@@ -19,6 +19,8 @@ WINDOW *title = NULL;
 FileT *dirs = NULL; //Folders
 FileT *files = NULL; //Everything else
 int dir_count = 0;
+char go_to[PATH_MAX];
+int show_hidden = 0;
 
 /* Moves the cursor down (positive) or up (negative). If it goes past the limit, it will be set too the
  * first item if it is too far down, and the last item if too far up.*/
@@ -91,6 +93,8 @@ void print_files(FileT *file, const int start, const int safety) {
   }
 }
 
+/* Gets the name of the current index and appends it to the current path.
+ * The path is then automatically switched to in the main loop*/
 void forward_dir() {
   if (cursor_index >= dir_count || max == 0)
     return;
@@ -98,18 +102,28 @@ void forward_dir() {
   for (int i = 0; i < cursor_index && dir; i++) {
     dir = dir->next;
   }
-  strcat(current_directory, "/");
+  char test[PATH_MAX];
+  strcpy(test,current_directory);
+  strcat(test, dir->name);
+  if (!opendir(test))
+    return;
   strcat(current_directory, dir->name);
+  strcat(current_directory, "/");
   cursor_index = 0;
 }
 
+/* Gets the last occurrance of a "/" and sets the subsequent chars in the 
+ * string to be empty*/
 void backward_dir() {
-  char * last = strrchr(current_directory, '/');
+  char *last = strrchr(current_directory, '/');
+  *last = '\0';
+  last = strrchr(current_directory, '/');
+  strcpy(go_to, last + 1);
+  last++;
   while (*last != '\0') {
     *last = '\0';
     last++;
   }
-  cursor_index = 0;
 }
 
 int main(int argc, char **argv) {
@@ -121,10 +135,12 @@ int main(int argc, char **argv) {
   curs_set(0); //Remove the cmd prompt cursor
   noecho();
   start_color();
+  init_pair(1, COLOR_CYAN, COLOR_BLACK);
   getmaxyx(stdscr,max_y,max_x);
   update_term_dimensions(max_y, max_x);
   if (!getcwd(current_directory, sizeof(current_directory)))
     exit = 1;
+  strcat(current_directory, "/");
   int reprint = 0;
   /*Main loop*/
   while (!exit) {
@@ -148,7 +164,7 @@ int main(int argc, char **argv) {
     struct dirent *ent;
     while ((ent = readdir(dir))) {
       char * name = ent->d_name;
-      if (name[0] != '.') {
+      if ((strcmp(name, ".") && strcmp(name, "..")) && (name[0] != '.' || show_hidden)) {
         if (ent->d_type == DT_DIR) {
           current_dir_index = append_file(current_dir_index, ent);
           dir_count++;
@@ -159,6 +175,18 @@ int main(int argc, char **argv) {
       }
     }
     closedir(dir);
+    if (strlen(go_to)) {
+      current_dir_index = dirs;
+      cursor_index = 0;
+      for (int i = 0; i < dir_count && current_dir_index ; i++) {
+        if (!strcmp(current_dir_index->name, go_to)) {
+          cursor_index = i;
+          break;
+        }
+        current_dir_index = current_dir_index->next;
+      }
+      memset(go_to,0,strlen(go_to));
+    }
     /*Print the directory contents only when necessary*/
     if (reprint || max != old_max) {
       /*Create arrays for grouping folders and sorting alphabetically*/
@@ -166,16 +194,19 @@ int main(int argc, char **argv) {
       int file_count = max - dir_count;
       current_file_index = files;
       current_dir_index = dirs;
-      wclear(win);
+      werase(win);
       wclear(preview);
       wclear(title);
       box(win, 0, 0);
       box(preview, 0, 0);
+      wattron(win, COLOR_PAIR(1));
+      wattron(win, A_BOLD);
       print_files(dirs, 1, dir_count);
+      wattroff(win, COLOR_PAIR(1));
+      wattroff(win, A_BOLD);
       print_files(files, dir_count + 1, file_count);
       char progress[10];
       sprintf(progress, "[%d/%d]", cursor_index + 1, max);
-      //mvwprintw(win, height, 1, progress);
       int offset = strlen(current_directory) + 2;
       mvwprintw(title, 0, offset, progress);
       mvwprintw(title, 0, 1, current_directory);
@@ -207,6 +238,9 @@ int main(int argc, char **argv) {
         break;
       case 'h':
         backward_dir();
+        break;
+      case 'z':
+        show_hidden = !show_hidden;
         break;
       default :
         if (!strcmp(ch, "^D")) {
