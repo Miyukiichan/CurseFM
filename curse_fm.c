@@ -12,9 +12,13 @@ typedef struct File {
 
 int max, cursor_index, height, width, max_x, max_y;
 int title_height = 1;
+char current_directory[PATH_MAX];
 WINDOW *win = NULL;
 WINDOW *preview = NULL;
 WINDOW *title = NULL;
+FileT *dirs = NULL; //Folders
+FileT *files = NULL; //Everything else
+int dir_count = 0;
 
 /* Moves the cursor down (positive) or up (negative). If it goes past the limit, it will be set too the
  * first item if it is too far down, and the last item if too far up.*/
@@ -87,6 +91,27 @@ void print_files(FileT *file, const int start, const int safety) {
   }
 }
 
+void forward_dir() {
+  if (cursor_index >= dir_count || max == 0)
+    return;
+  FileT *dir = dirs;
+  for (int i = 0; i < cursor_index && dir; i++) {
+    dir = dir->next;
+  }
+  strcat(current_directory, "/");
+  strcat(current_directory, dir->name);
+  cursor_index = 0;
+}
+
+void backward_dir() {
+  char * last = strrchr(current_directory, '/');
+  while (*last != '\0') {
+    *last = '\0';
+    last++;
+  }
+  cursor_index = 0;
+}
+
 int main(int argc, char **argv) {
   /*Initialise ncurses and global variables*/
   max = 0; //Total amount of files and folders
@@ -98,9 +123,6 @@ int main(int argc, char **argv) {
   start_color();
   getmaxyx(stdscr,max_y,max_x);
   update_term_dimensions(max_y, max_x);
-  char current_directory[PATH_MAX];
-  FileT *dirs = NULL; //Folders
-  FileT *files = NULL; //Everything else
   if (!getcwd(current_directory, sizeof(current_directory)))
     exit = 1;
   int reprint = 0;
@@ -110,7 +132,7 @@ int main(int argc, char **argv) {
       update_term_dimensions();
     }
     int old_max = max;
-    int dir_count = 0;
+    dir_count = 0;
     max = 0;
     DIR *dir;
     if (!(dir = opendir(current_directory))) {
@@ -126,7 +148,7 @@ int main(int argc, char **argv) {
     struct dirent *ent;
     while ((ent = readdir(dir))) {
       char * name = ent->d_name;
-      if (strcmp(name, ".") && strcmp(name, "..")) {
+      if (name[0] != '.') {
         if (ent->d_type == DT_DIR) {
           current_dir_index = append_file(current_dir_index, ent);
           dir_count++;
@@ -179,6 +201,12 @@ int main(int argc, char **argv) {
         break;
       case 'G':
         cursor_index = max - 1;
+        break;
+      case 'l':
+        forward_dir();
+        break;
+      case 'h':
+        backward_dir();
         break;
       default :
         if (!strcmp(ch, "^D")) {
