@@ -4,6 +4,7 @@
 #include "string.h"
 #include "dirent.h"
 #include "stdlib.h"
+#include "config.h"
 
 typedef struct File {
   char * name;
@@ -20,7 +21,8 @@ FileT *dirs = NULL; //Folders
 FileT *files = NULL; //Everything else
 int dir_count = 0;
 char go_to[PATH_MAX];
-int show_hidden = 0;
+int show_hidden = SHOW_HIDDEN;
+int reprint = 0;
 
 /* Moves the cursor down (positive) or up (negative). If it goes past the limit, it will be set too the
  * first item if it is too far down, and the last item if too far up.*/
@@ -84,10 +86,10 @@ FileT *append_file(FileT *current, struct dirent *ent) {
  * Finishes when linked list is finished or when the safety value is reached (ie. the size of the list)
  * The cursor position is indicated by inverting the background and foreground colours.*/
 void print_files(FileT *file, const int start, const int safety) {
-  for (int i = 0; i < safety && i < height && file; i++) {
-    if (i + start - 1 == cursor_index)
+  for (int i = start; i < start + safety && i < height && file; i++) {
+    if (i - 1 == cursor_index)
       wattron(win, A_REVERSE);
-    mvwprintw(win, start + i, 1, file->name);
+    mvwprintw(win, i, 1, file->name);
     wattroff(win, A_REVERSE);
     file = file->next;
   }
@@ -96,8 +98,10 @@ void print_files(FileT *file, const int start, const int safety) {
 /* Gets the name of the current index and appends it to the current path.
  * The path is then automatically switched to in the main loop*/
 void forward_dir() {
-  if (cursor_index >= dir_count || max == 0)
+  if (cursor_index >= dir_count || max == 0) {
+    reprint = 0;
     return;
+  }
   FileT *dir = dirs;
   for (int i = 0; i < cursor_index && dir; i++) {
     dir = dir->next;
@@ -105,8 +109,10 @@ void forward_dir() {
   char test[PATH_MAX];
   strcpy(test,current_directory);
   strcat(test, dir->name);
-  if (!opendir(test))
+  if (!opendir(test)) {
+    reprint = 0;
     return;
+  }
   strcat(current_directory, dir->name);
   strcat(current_directory, "/");
   cursor_index = 0;
@@ -115,6 +121,10 @@ void forward_dir() {
 /* Gets the last occurrance of a "/" and sets the subsequent chars in the 
  * string to be empty*/
 void backward_dir() {
+  if (!strcmp(current_directory, "/")) {
+    reprint = 0;
+    return;
+  }
   char *last = strrchr(current_directory, '/');
   *last = '\0';
   last = strrchr(current_directory, '/');
@@ -141,7 +151,6 @@ int main(int argc, char **argv) {
   if (!getcwd(current_directory, sizeof(current_directory)))
     exit = 1;
   strcat(current_directory, "/");
-  int reprint = 0;
   /*Main loop*/
   while (!exit) {
     if (is_term_resized(max_y, max_x)) {
@@ -194,11 +203,13 @@ int main(int argc, char **argv) {
       int file_count = max - dir_count;
       current_file_index = files;
       current_dir_index = dirs;
-      werase(win);
+      wclear(win);
       wclear(preview);
       wclear(title);
-      box(win, 0, 0);
-      box(preview, 0, 0);
+      if (BORDERS) {
+        box(win, 0, 0);
+        box(preview, 0, 0);
+      }
       wattron(win, COLOR_PAIR(1));
       wattron(win, A_BOLD);
       print_files(dirs, 1, dir_count);
@@ -252,7 +263,6 @@ int main(int argc, char **argv) {
         else
           reprint = 0;
     }
-    wrefresh(win);
     usleep(5000);
   }
   endwin();

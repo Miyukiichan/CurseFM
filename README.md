@@ -15,9 +15,8 @@ An Ncurses file manager written in C. Ranger BTFO.
 - Open files
 - File/image previews
   - Ueberzug
-- Toggle hidden files
-  - Default configurable
 
 # Bugs
 
 - Resizing the terminal window causes segfault
+- Scrolling quickly causes borders to flicker
