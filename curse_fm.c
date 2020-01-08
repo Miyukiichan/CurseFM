@@ -19,29 +19,53 @@ WINDOW *preview = NULL;
 WINDOW *title = NULL;
 FileT *dirs = NULL; //Folders
 FileT *files = NULL; //Everything else
+FileT *dir_tail = NULL;
+FileT *file_tail = NULL;
 int dir_count = 0;
 char go_to[PATH_MAX];
 int show_hidden = SHOW_HIDDEN;
 int reprint = 0;
+int scroll_amount = 0;
 
 /* Moves the cursor down (positive) or up (negative). If it goes past the limit, it will be set too the
- * first item if it is too far down, and the last item if too far up.*/
-void move_wrap_cursor(const int amount) {
+ * first item if it is too far down, and the last item if too far up (Only of wrap is true). 
+ * Otherwise it stays at the limit*/
+void move_cursor(const int amount, int wrap) {
   if (amount > 0) {
-    cursor_index = cursor_index < ((max - 1) - (amount - 1)) ? cursor_index + amount : 0;
+    if (cursor_index + scroll_amount < ((max - 1) - (amount - 1))) {
+      if ((cursor_index + amount) > height - 1)
+        scroll_amount += amount;
+      else
+        cursor_index += amount;
+    }
+    else {
+      if (wrap) {
+        cursor_index = 0;
+        scroll_amount = 0;
+      }
+      else {
+        cursor_index = height - 1;
+        scroll_amount = (max - 1) > height ? max - height : 0;
+      }
+    }
   }
   else if (amount < 0) {
-    cursor_index = cursor_index > (0 - (amount + 1)) ? cursor_index + amount : (max - 1);
-  }
-}
-
-/*Same as previous function but stays at the limit as opposed to wrapping around*/
-void move_cursor(const int amount) {
-  if (amount > 0) {
-    cursor_index = cursor_index < (max - (amount - 1)) ? cursor_index + amount : (max - 1);
-  }
-  else if (amount < 0) {
-    cursor_index = cursor_index > (0 - (amount + 1)) ? cursor_index + amount : 0;
+    if (cursor_index + scroll_amount > (0 - (amount + 1))) {
+      if ((cursor_index + amount) > -1)
+        cursor_index += amount;
+      else
+        scroll_amount += amount;
+    }
+    else {
+      if (wrap) {
+        cursor_index = height - 1;
+        scroll_amount = (max - 1) > height ? max - height : 0;
+      }
+      else {
+        cursor_index = 0;
+        scroll_amount = 0;
+      }
+    }
   }
 }
 
@@ -86,7 +110,9 @@ FileT *append_file(FileT *current, struct dirent *ent) {
  * Finishes when linked list is finished or when the safety value is reached (ie. the size of the list)
  * The cursor position is indicated by inverting the background and foreground colours.*/
 void print_files(FileT *file, const int start, const int safety) {
-  for (int i = start; i < start + safety && i < height && file; i++) {
+  for (int i = 0; i < scroll_amount && file; i++)
+    file = file->next;
+  for (int i = start; i < start + safety && i < height + 1 && file; i++) {
     if (i - 1 == cursor_index)
       wattron(win, A_REVERSE);
     mvwprintw(win, i, 1, file->name);
@@ -98,12 +124,12 @@ void print_files(FileT *file, const int start, const int safety) {
 /* Gets the name of the current index and appends it to the current path.
  * The path is then automatically switched to in the main loop*/
 void forward_dir() {
-  if (cursor_index >= dir_count || max == 0) {
+  if (cursor_index + scroll_amount >= dir_count || max == 0) {
     reprint = 0;
     return;
   }
   FileT *dir = dirs;
-  for (int i = 0; i < cursor_index && dir; i++) {
+  for (int i = 0; i < cursor_index + scroll_amount && dir; i++) {
     dir = dir->next;
   }
   char test[PATH_MAX];
@@ -116,6 +142,7 @@ void forward_dir() {
   strcat(current_directory, dir->name);
   strcat(current_directory, "/");
   cursor_index = 0;
+  scroll_amount = 0;
 }
 
 /* Gets the last occurrance of a "/" and sets the subsequent chars in the 
@@ -195,6 +222,10 @@ int main(int argc, char **argv) {
         current_dir_index = current_dir_index->next;
       }
       memset(go_to,0,strlen(go_to));
+      if (cursor_index + scroll_amount > height - 1) {
+        scroll_amount = cursor_index - height + 1;
+        cursor_index = height - 1;
+      }
     }
     /*Print the directory contents only when necessary*/
     if (reprint || max != old_max) {
@@ -217,7 +248,7 @@ int main(int argc, char **argv) {
       wattroff(win, A_BOLD);
       print_files(files, dir_count + 1, file_count);
       char progress[10];
-      sprintf(progress, "[%d/%d]", cursor_index + 1, max);
+      sprintf(progress, "[%d/%d]", cursor_index + scroll_amount + 1, max);
       int offset = strlen(current_directory) + 2;
       mvwprintw(title, 0, offset, progress);
       mvwprintw(title, 0, 1, current_directory);
@@ -233,10 +264,10 @@ int main(int argc, char **argv) {
         exit = 1;
         break;
       case 'k':
-        move_wrap_cursor(-1);
+        move_cursor(-1, 1);
         break;
       case 'j':
-        move_wrap_cursor(1);
+        move_cursor(1, 1);
         break;
       case 'g':
         cursor_index = 0;
@@ -255,10 +286,10 @@ int main(int argc, char **argv) {
         break;
       default :
         if (!strcmp(ch, "^D")) {
-          move_cursor(height - 1);
+          move_cursor(height - 1, 0);
         }
         else if (!strcmp(ch, "^U")) {
-          move_cursor(-height + 1);
+          move_cursor(-height + 1, 0);
         }
         else
           reprint = 0;
