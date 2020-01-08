@@ -5,6 +5,7 @@ An Ncurses file manager written in C. Ranger BTFO.
 # TODO
 
 - Sort files and folders alphabetically
+- Scrolling
 - Navigate folders
   - Show error message if folder inaccessible
 - Copy/Cut/Paste
