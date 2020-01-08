@@ -203,9 +203,9 @@ int main(int argc, char **argv) {
       int file_count = max - dir_count;
       current_file_index = files;
       current_dir_index = dirs;
-      wclear(win);
-      wclear(preview);
-      wclear(title);
+      werase(win);
+      werase(preview);
+      werase(title);
       if (BORDERS) {
         box(win, 0, 0);
         box(preview, 0, 0);

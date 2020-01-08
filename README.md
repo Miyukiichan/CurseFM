@@ -19,4 +19,3 @@ An Ncurses file manager written in C. Ranger BTFO.
 # Bugs
 
 - Resizing the terminal window causes segfault
-- Scrolling quickly causes borders to flicker
