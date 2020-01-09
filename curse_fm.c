@@ -9,6 +9,7 @@
 typedef struct File {
   char * name;
   struct File * next;
+  int is_directory;
 }FileT;
 
 int max, cursor_index, height, width, max_x, max_y;
@@ -17,10 +18,7 @@ char current_directory[PATH_MAX];
 WINDOW *win = NULL;
 WINDOW *preview = NULL;
 WINDOW *title = NULL;
-FileT *dirs = NULL; //Folders
-FileT *files = NULL; //Everything else
-FileT *dir_tail = NULL;
-FileT *file_tail = NULL;
+FileT *files = NULL;
 int dir_count = 0;
 char go_to[PATH_MAX];
 int show_hidden = SHOW_HIDDEN;
@@ -103,6 +101,7 @@ FileT *free_files(FileT *head) {
 FileT *append_file(FileT *current, struct dirent *ent) {
   current->name = ent->d_name;
   current->next = new_file();
+  current->is_directory = (ent->d_type == DT_DIR);
   return current->next;
 }
 
@@ -113,9 +112,15 @@ void print_files(FileT *file, const int start, const int safety) {
   for (int i = 0; i < scroll_amount && file; i++)
     file = file->next;
   for (int i = start; i < start + safety && i < height + 1 && file; i++) {
+    if (file->is_directory) {
+      wattron(win, COLOR_PAIR(1));
+      wattron(win, A_BOLD);
+    }
     if (i - 1 == cursor_index)
       wattron(win, A_REVERSE);
     mvwprintw(win, i, 1, file->name);
+    wattroff(win, COLOR_PAIR(1));
+    wattroff(win, A_BOLD);
     wattroff(win, A_REVERSE);
     file = file->next;
   }
@@ -128,7 +133,7 @@ void forward_dir() {
     reprint = 0;
     return;
   }
-  FileT *dir = dirs;
+  FileT *dir = files;
   for (int i = 0; i < cursor_index + scroll_amount && dir; i++) {
     dir = dir->next;
   }
@@ -193,33 +198,29 @@ int main(int argc, char **argv) {
     }
     /*Clear the list and initialise for next read*/
     files = free_files(files);
-    dirs = free_files(dirs);
     FileT *current_file_index = files;
-    FileT *current_dir_index = dirs;
     /*Read current directory into linked lists*/
     struct dirent *ent;
     while ((ent = readdir(dir))) {
       char * name = ent->d_name;
       if ((strcmp(name, ".") && strcmp(name, "..")) && (name[0] != '.' || show_hidden)) {
         if (ent->d_type == DT_DIR) {
-          current_dir_index = append_file(current_dir_index, ent);
           dir_count++;
         }
-        else
-          current_file_index = append_file(current_file_index, ent);
+        current_file_index = append_file(current_file_index, ent);
         max++;
       }
     }
     closedir(dir);
     if (strlen(go_to)) {
-      current_dir_index = dirs;
+      current_file_index = files;
       cursor_index = 0;
-      for (int i = 0; i < dir_count && current_dir_index ; i++) {
-        if (!strcmp(current_dir_index->name, go_to)) {
+      for (int i = 0; i < dir_count && current_file_index ; i++) {
+        if (!strcmp(current_file_index->name, go_to)) {
           cursor_index = i;
           break;
         }
-        current_dir_index = current_dir_index->next;
+        current_file_index = current_file_index->next;
       }
       memset(go_to,0,strlen(go_to));
       if (cursor_index + scroll_amount > height - 1) {
@@ -233,7 +234,6 @@ int main(int argc, char **argv) {
       cursor_index = cursor_index + 1 > max ? max - 1 : cursor_index;
       int file_count = max - dir_count;
       current_file_index = files;
-      current_dir_index = dirs;
       werase(win);
       werase(preview);
       werase(title);
@@ -241,12 +241,7 @@ int main(int argc, char **argv) {
         box(win, 0, 0);
         box(preview, 0, 0);
       }
-      wattron(win, COLOR_PAIR(1));
-      wattron(win, A_BOLD);
-      print_files(dirs, 1, dir_count);
-      wattroff(win, COLOR_PAIR(1));
-      wattroff(win, A_BOLD);
-      print_files(files, dir_count + 1, file_count);
+      print_files(files, 1, max);
       char progress[10];
       sprintf(progress, "[%d/%d]", cursor_index + scroll_amount + 1, max);
       int offset = strlen(current_directory) + 2;
