@@ -6,24 +6,44 @@
 #include "stdlib.h"
 #include "config.h"
 
-typedef struct File {
-  char * name;
-  struct File * next;
-  int is_directory;
-}FileT;
-
 int max, cursor_index, height, width, max_x, max_y;
 int title_height = 1;
 char current_directory[PATH_MAX];
-WINDOW *win = NULL;
+WINDOW *file_win = NULL;
 WINDOW *preview = NULL;
 WINDOW *title = NULL;
-FileT *files = NULL;
-int dir_count = 0;
+struct dirent **files;
 char go_to[PATH_MAX];
 int show_hidden = SHOW_HIDDEN;
 int reprint = 0;
 int scroll_amount = 0;
+
+int is_directory(const struct dirent *ent) {
+  return ent->d_type == DT_DIR;
+}
+
+/*Prioritises directories to be grouped at the top. Each group is then
+ * alphabetized.*/
+int compare_files(const struct dirent **a, const struct dirent **b) {
+  const struct dirent *ap = *a;
+  const struct dirent *bp = *b;
+  int alphacmp = alphasort(a, b);
+  if (!is_directory(ap) && is_directory(bp)) {
+    return 1;
+  }
+  if (is_directory(ap) == is_directory(bp)) {
+    if (alphacmp > 0)
+      return 1;
+    return -1;
+  }
+  return -1;
+}
+
+/* Selection filter callback for the scandir function. Only shows hidden files when user
+ * chooses and completely removes the current and previous directory entries from the list*/
+int selector(const struct dirent *ent) {
+  return (strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) && (ent->d_name[0] != '.' || show_hidden);
+}
 
 /* Moves the cursor down (positive) or up (negative). If it goes past the limit, it will be set too the
  * first item if it is too far down, and the last item if too far up (Only of wrap is true). 
@@ -42,7 +62,7 @@ void move_cursor(const int amount, int wrap) {
         scroll_amount = 0;
       }
       else {
-        cursor_index = height - 1;
+        cursor_index = (max - 1) > height ? height - 1 : max - 1;
         scroll_amount = (max - 1) > height ? max - height : 0;
       }
     }
@@ -56,7 +76,7 @@ void move_cursor(const int amount, int wrap) {
     }
     else {
       if (wrap) {
-        cursor_index = height - 1;
+        cursor_index = (max - 1) > height ? height - 1 : max - 1;
         scroll_amount = (max - 1) > height ? max - height : 0;
       }
       else {
@@ -71,80 +91,55 @@ void move_cursor(const int amount, int wrap) {
 void update_term_dimensions() {
   height = max_y - 2 - title_height;
   width = (max_x / 2) - 2;
-  wborder(win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
-  if (win) {
-    wrefresh(win);
-    delwin(win);
+  wborder(file_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+  if (file_win) {
+    wrefresh(file_win);
+    delwin(file_win);
   }
-  win = newwin(max_y - title_height, (max_x / 2) - 1, title_height, 0);
+  file_win = newwin(max_y - title_height, (max_x / 2) - 1, title_height, 0);
   preview = newwin(max_y - title_height, max_x / 2 + 1, title_height, width + 1);
   title = newwin(title_height, max_x, 0, 0);
-  nodelay(win, 1);
+  nodelay(file_win, 1);
 }
 
-/*File list functions*/
-FileT * new_file() {
-  FileT *file = (FileT*)malloc(sizeof(FileT));
-  file->next = NULL;
-  return file;
-}
-
-FileT *free_files(FileT *head) {
-  while (head) {
-    FileT *temp = head->next;
-    free(head);
-    head = temp;
-  }
-  return new_file();
-}
-
-FileT *append_file(FileT *current, struct dirent *ent) {
-  current->name = ent->d_name;
-  current->next = new_file();
-  current->is_directory = (ent->d_type == DT_DIR);
-  return current->next;
-}
-
-/* Prints linked list of files starting at a particular offset and going down one by one. 
- * Finishes when linked list is finished or when the safety value is reached (ie. the size of the list)
- * The cursor position is indicated by inverting the background and foreground colours.*/
-void print_files(FileT *file, const int start, const int safety) {
-  for (int i = 0; i < scroll_amount && file; i++)
-    file = file->next;
-  for (int i = start; i < start + safety && i < height + 1 && file; i++) {
-    if (file->is_directory) {
+/* Prints files to the given window from an array of dirent pointers. Starts at a given start
+ * value and ends until either the safety value or the height of the screen is reached.
+ * The safety value should be the size of the array. Also indeicates directories by colouring
+ * and bolding them and indeicates the cursor by inverting the background and foreground colours.*/
+void print_files(WINDOW * win, struct dirent **file, const int start, const int safety) {
+  for (int i = start; i < start + safety && i < height + 1; i++) {
+    const struct dirent *file = files[i - start + scroll_amount];
+    if (is_directory(file)) {
       wattron(win, COLOR_PAIR(1));
       wattron(win, A_BOLD);
     }
     if (i - 1 == cursor_index)
       wattron(win, A_REVERSE);
-    mvwprintw(win, i, 1, file->name);
+    mvwprintw(win, i, 1, file->d_name);
     wattroff(win, COLOR_PAIR(1));
     wattroff(win, A_BOLD);
     wattroff(win, A_REVERSE);
-    file = file->next;
   }
 }
 
 /* Gets the name of the current index and appends it to the current path.
  * The path is then automatically switched to in the main loop*/
 void forward_dir() {
-  if (cursor_index + scroll_amount >= dir_count || max == 0) {
+  if (cursor_index + scroll_amount > (max - 1))
+    return;
+  struct dirent *dir = files[cursor_index + scroll_amount];
+  if (!is_directory(dir)) {
     reprint = 0;
     return;
   }
-  FileT *dir = files;
-  for (int i = 0; i < cursor_index + scroll_amount && dir; i++) {
-    dir = dir->next;
-  }
   char test[PATH_MAX];
   strcpy(test,current_directory);
-  strcat(test, dir->name);
+  strcat(test, dir->d_name);
   if (!opendir(test)) {
     reprint = 0;
     return;
   }
-  strcat(current_directory, dir->name);
+  strcat(current_directory, dir->d_name);
   strcat(current_directory, "/");
   cursor_index = 0;
   scroll_amount = 0;
@@ -168,6 +163,12 @@ void backward_dir() {
   }
 }
 
+void free_files(struct dirent ** file_list, int size) {
+  for (int i = 0; i < size; i++)
+    free(file_list[i]);
+  free(file_list);
+}
+
 int main(int argc, char **argv) {
   /*Initialise ncurses and global variables*/
   max = 0; //Total amount of files and folders
@@ -189,59 +190,40 @@ int main(int argc, char **argv) {
       update_term_dimensions();
     }
     int old_max = max;
-    dir_count = 0;
     max = 0;
     DIR *dir;
     if (!(dir = opendir(current_directory))) {
       exit = 1;
       continue;
     }
-    /*Clear the list and initialise for next read*/
-    files = free_files(files);
-    FileT *current_file_index = files;
-    /*Read current directory into linked lists*/
-    struct dirent *ent;
-    while ((ent = readdir(dir))) {
-      char * name = ent->d_name;
-      if ((strcmp(name, ".") && strcmp(name, "..")) && (name[0] != '.' || show_hidden)) {
-        if (ent->d_type == DT_DIR) {
-          dir_count++;
-        }
-        current_file_index = append_file(current_file_index, ent);
-        max++;
-      }
-    }
+    free_files(files, old_max);
+    max = scandir(current_directory, &files, selector, compare_files);
     closedir(dir);
     if (strlen(go_to)) {
-      current_file_index = files;
       cursor_index = 0;
-      for (int i = 0; i < dir_count && current_file_index ; i++) {
-        if (!strcmp(current_file_index->name, go_to)) {
-          cursor_index = i;
+      scroll_amount = 0;
+      int new_index = 0;
+      for (int i = 0; i < max; i++) {
+        struct dirent *d = files[i];
+        if (!strcmp(d->d_name, go_to)) {
+          new_index = i;
           break;
         }
-        current_file_index = current_file_index->next;
       }
       memset(go_to,0,strlen(go_to));
-      if (cursor_index + scroll_amount > height - 1) {
-        scroll_amount = cursor_index - height + 1;
-        cursor_index = height - 1;
-      }
+      move_cursor(new_index, 0);
     }
     /*Print the directory contents only when necessary*/
     if (reprint || max != old_max) {
       /*Create arrays for grouping folders and sorting alphabetically*/
-      cursor_index = cursor_index + 1 > max ? max - 1 : cursor_index;
-      int file_count = max - dir_count;
-      current_file_index = files;
-      werase(win);
+      werase(file_win);
       werase(preview);
       werase(title);
       if (BORDERS) {
-        box(win, 0, 0);
+        box(file_win, 0, 0);
         box(preview, 0, 0);
       }
-      print_files(files, 1, max);
+      print_files(file_win, files, 1, max);
       char progress[10];
       sprintf(progress, "[%d/%d]", cursor_index + scroll_amount + 1, max);
       int offset = strlen(current_directory) + 2;
@@ -252,7 +234,7 @@ int main(int argc, char **argv) {
     }
     reprint = 1;
     /*Key input*/
-    char c = wgetch(win);
+    char c = wgetch(file_win);
     const char * ch = keyname(c);
     switch (c) {
       case 'q':

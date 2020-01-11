@@ -4,9 +4,6 @@ An Ncurses file manager written in C. Ranger BTFO.
 
 # TODO
 
-- Sort files and folders alphabetically
-  - Also base sorting on if item is a directory or regular file
-  - Solves the problem of grouping and navigation bugs as well
 - Scrolling
   - Retain cursor + scroll position for next/previous directories recursively
 - Navigate folders
@@ -17,9 +14,11 @@ An Ncurses file manager written in C. Ranger BTFO.
   - Customizable
   - Colours for different filetypes
 - Open files
-- File/image previews
+- File/Folder/image previews
   - Ueberzug
+- Handle symlinks
 
 # Bugs
 
 - Resizing the terminal window causes segfault
+- Showing hidden files during runtime retains the cursor index as opposed to locating the actual item the cursor was on
