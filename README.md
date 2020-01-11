@@ -13,7 +13,6 @@ An Ncurses file manager written in C. Ranger BTFO.
 - Colours
   - Customizable
   - Colours for different filetypes
-- Open files
 - File/Folder/image previews
   - Ueberzug
 - Handle symlinks

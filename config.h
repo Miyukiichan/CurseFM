@@ -8,4 +8,6 @@
  * Default 0*/
 #define SHOW_HIDDEN 0
 
+/* Program used to open files
+ * Default "xdg-open"*/
 #define OPENER "xdg-open"
