@@ -216,6 +216,7 @@ int main(int argc, char **argv) {
     /*Print the directory contents only when necessary*/
     if (reprint || max != old_max) {
       /*Create arrays for grouping folders and sorting alphabetically*/
+      cursor_index = cursor_index + 1 > max ? max - 1 : cursor_index;
       werase(file_win);
       werase(preview);
       werase(title);
@@ -260,6 +261,7 @@ int main(int argc, char **argv) {
         break;
       case 'z':
         show_hidden = !show_hidden;
+        //strcpy(go_to, files[cursor_index + scroll_amount]->d_name);
         break;
       default :
         if (!strcmp(ch, "^D")) {

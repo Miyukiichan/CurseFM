@@ -7,3 +7,5 @@
  * show(1)/hide(0).
  * Default 0*/
 #define SHOW_HIDDEN 0
+
+#define OPENER "xdg-open"
