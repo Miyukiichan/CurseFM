@@ -5,6 +5,8 @@
 #include "dirent.h"
 #include "stdlib.h"
 #include "config.h"
+#include "sys/stat.h"
+#include "fcntl.h"
 
 int max, cursor_index, height, width, max_x, max_y;
 int title_height = 1;
@@ -17,6 +19,20 @@ char go_to[PATH_MAX];
 int show_hidden = SHOW_HIDDEN;
 int reprint = 0;
 int scroll_amount = 0;
+
+void open_file(char *prog, char *file) {
+  int pid = fork();
+  if (pid == 0) {
+    int null_fd = open("/dev/null", O_WRONLY);
+    dup2(null_fd,2);
+    dup2(null_fd,1);
+    char path[PATH_MAX];
+    strcpy(path, current_directory);
+    strcat(path, file);
+    execlp(prog, prog, path, (char*)NULL);
+    exit(0);
+  }
+}
 
 int is_directory(const struct dirent *ent) {
   return ent->d_type == DT_DIR;
@@ -130,6 +146,7 @@ void forward_dir() {
   struct dirent *dir = files[cursor_index + scroll_amount];
   if (!is_directory(dir)) {
     reprint = 0;
+    open_file(OPENER, dir->d_name);
     return;
   }
   char test[PATH_MAX];
