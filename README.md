@@ -9,7 +9,6 @@ An Ncurses file manager written in C. Ranger BTFO.
 - Navigate folders
   - Show error message if folder inaccessible
 - Copy/Cut/Paste
-- Custom shortcuts
 - Colours
   - Customizable
   - Colours for different filetypes

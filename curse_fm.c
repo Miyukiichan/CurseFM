@@ -195,7 +195,7 @@ int main(int argc, char **argv) {
   curs_set(0); //Remove the cmd prompt cursor
   noecho();
   start_color();
-  init_pair(1, COLOR_CYAN, COLOR_BLACK);
+  init_pair(1, DIR_COL, COLOR_BLACK);
   getmaxyx(stdscr,max_y,max_x);
   update_term_dimensions(max_y, max_x);
   if (!getcwd(current_directory, sizeof(current_directory)))
@@ -254,42 +254,30 @@ int main(int argc, char **argv) {
     /*Key input*/
     char c = wgetch(file_win);
     const char * ch = keyname(c);
-    switch (c) {
-      case 'q':
-        exit = 1;
-        break;
-      case 'k':
-        move_cursor(-1, 1);
-        break;
-      case 'j':
-        move_cursor(1, 1);
-        break;
-      case 'g':
-        cursor_index = 0;
-        break;
-      case 'G':
-        cursor_index = max - 1;
-        break;
-      case 'l':
-        forward_dir();
-        break;
-      case 'h':
-        backward_dir();
-        break;
-      case 'z':
-        show_hidden = !show_hidden;
-        //strcpy(go_to, files[cursor_index + scroll_amount]->d_name);
-        break;
-      default :
-        if (!strcmp(ch, "^D")) {
-          move_cursor(height - 1, 0);
-        }
-        else if (!strcmp(ch, "^U")) {
-          move_cursor(-height + 1, 0);
-        }
-        else
-          reprint = 0;
+    if (!strcmp(ch, EXIT_KEY))
+      exit = 1;
+    else if (!strcmp(ch, CURSOR_UP_KEY))
+      move_cursor(-1, WRAP_CURSOR);
+    else if (!strcmp(ch, CURSOR_DOWN_KEY))
+      move_cursor(1, WRAP_CURSOR);
+    else if (!strcmp(ch, FIRST_INDEX_KEY))
+      cursor_index = 0;
+    else if (!strcmp(ch, LAST_INDEX_KEY))
+      cursor_index = max - 1;
+    else if (!strcmp(ch, FORWARD_KEY))
+      forward_dir();
+    else if (!strcmp(ch, BACKWARD_KEY))
+      backward_dir();
+    else if (!strcmp(ch, TOGGLE_HIDDEN_KEY)) {
+      show_hidden = !show_hidden;
+      //strcpy(go_to, files[cursor_index + scroll_amount]->d_name);
     }
+    else if (!strcmp(ch, PAGE_DOWN_KEY))
+      move_cursor(height - 1, 0);
+    else if (!strcmp(ch, PAGE_UP_KEY))
+      move_cursor(-height + 1, 0);
+    else
+      reprint = 0;
     usleep(5000);
   }
   endwin();
