@@ -4,12 +4,17 @@
 #include "string.h"
 #include "dirent.h"
 #include "stdlib.h"
-#include "config.h"
 #include "sys/stat.h"
 #include "fcntl.h"
+#include "magic.h"
+
+#include "config.h"
+
+#define TITLE_HEIGHT 1
+#define X_BORDER_OFFSET 2
+#define Y_BORDER_OFFSET 2 + TITLE_HEIGHT
 
 int max, cursor_index, height, width, max_x, max_y;
-int title_height = 1;
 char current_directory[PATH_MAX];
 WINDOW *file_win = NULL;
 WINDOW *preview = NULL;
@@ -106,17 +111,17 @@ void move_cursor(const int amount, int wrap) {
 /*Resize and reinitialize the main window*/
 void update_term_dimensions() {
   int factor = SHOW_PREVIEWS ? 2 : 1;
-  height = max_y - 2 - title_height;
-  width = (max_x / factor) - 2;
+  height = max_y - Y_BORDER_OFFSET;
+  width = (max_x / factor) - X_BORDER_OFFSET;
   wborder(file_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
   if (file_win) {
     wrefresh(file_win);
     delwin(file_win);
   }
-  file_win = newwin(max_y - title_height, (max_x / factor) - 1, title_height, 0);
+  file_win = newwin(max_y - TITLE_HEIGHT, (max_x / factor), TITLE_HEIGHT, 0);
   if (SHOW_PREVIEWS)
-    preview = newwin(max_y - title_height, max_x / 2 + 1, title_height, width + 1);
-  title = newwin(title_height, max_x, 0, 0);
+    preview = newwin(max_y - TITLE_HEIGHT, max_x / 2 + 1, TITLE_HEIGHT, width + 1);
+  title = newwin(TITLE_HEIGHT, max_x, 0, 0);
   nodelay(file_win, 1);
 }
 
@@ -158,7 +163,6 @@ void forward_dir() {
   DIR * test_dir;
   if (!(test_dir = opendir(test))) {
     reprint = 0;
-    closedir(test_dir);
     return;
   }
   closedir(test_dir);
@@ -192,6 +196,8 @@ void free_files(struct dirent ** file_list, int size) {
   free(file_list);
 }
 
+/* Prints a preview of the currently selected file in the preview window
+ * if available*/
 void print_preview() {
   if (!max || (cursor_index + scroll_amount) >= max)
     return;
@@ -199,6 +205,7 @@ void print_preview() {
   char current_file[PATH_MAX];
   strcpy(current_file, current_directory);
   strcat(current_file, ent->d_name);
+  /*Directory previews*/
   if (is_directory(ent) && SHOW_FOLDER_PREVIEWS) {
     DIR *dir;
     if (!(dir = opendir(current_file)))
@@ -208,6 +215,28 @@ void print_preview() {
     closedir(dir);
     print_files(preview, sub_files, 1, limit, 0, 0);
     free_files(sub_files, limit);
+  }
+  else {
+    /*Get the mime type of the file*/
+    const char *mime;
+    magic_t magic;
+    magic = magic_open(MAGIC_MIME_TYPE); 
+    magic_load(magic, NULL);
+    mime = magic_file(magic, current_file);
+    /*Text file preview*/
+    if (strstr(mime, "text") && SHOW_FILE_PREVIEWS) {
+      char buff[width + 2];
+      FILE *stream;
+      if ((stream = fopen(current_file, "r"))) {
+        int i = 1;
+        while (fgets(buff, width + X_BORDER_OFFSET, stream) && i < height + Y_BORDER_OFFSET) {
+          mvwprintw(preview, i, 1, buff);
+          i++;
+        }
+      fclose(stream);
+      }
+    }
+    magic_close(magic);
   }
 }
 
@@ -263,14 +292,14 @@ int main(int argc, char **argv) {
       werase(file_win);
       werase(preview);
       werase(title);
+      if (SHOW_PREVIEWS)
+        print_preview();
+      print_files(file_win, files, 1, max, 1, 1);
       if (BORDERS) {
         box(file_win, 0, 0);
         if (SHOW_PREVIEWS)
           box(preview, 0, 0);
       }
-      if (SHOW_PREVIEWS)
-        print_preview();
-      print_files(file_win, files, 1, max, 1, 1);
       char progress[10];
       sprintf(progress, "[%d/%d]", cursor_index + scroll_amount + 1, max);
       int offset = strlen(current_directory) + 2;

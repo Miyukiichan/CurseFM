@@ -2,6 +2,15 @@
 
 An Ncurses file manager written in C. Ranger BTFO.
 
+# Dependencies
+
+- ncurses
+- libmagic-dev
+
+# Building
+
+Clone the repo, cd into CurseFM and run make
+
 # TODO
 
 - Scrolling
@@ -12,7 +21,7 @@ An Ncurses file manager written in C. Ranger BTFO.
 - Colours
   - Customizable
   - Colours for different filetypes
-- File/image previews
+- Image previews
   - Ueberzug
 - Handle symlinks
 

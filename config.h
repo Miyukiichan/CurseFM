@@ -43,6 +43,11 @@
  * Default 1*/
 #define SHOW_FOLDER_PREVIEWS 1
 
+/* Show the contents of the currently selected file in the preview pane
+ * on(1)/off(0)
+ * Default 1*/
+#define SHOW_FILE_PREVIEWS 1
+
 /*KEYBINDS*/
 
 /* Exits the application
