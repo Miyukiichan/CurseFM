@@ -105,15 +105,17 @@ void move_cursor(const int amount, int wrap) {
 
 /*Resize and reinitialize the main window*/
 void update_term_dimensions() {
+  int factor = SHOW_PREVIEWS ? 2 : 1;
   height = max_y - 2 - title_height;
-  width = (max_x / 2) - 2;
+  width = (max_x / factor) - 2;
   wborder(file_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
   if (file_win) {
     wrefresh(file_win);
     delwin(file_win);
   }
-  file_win = newwin(max_y - title_height, (max_x / 2) - 1, title_height, 0);
-  preview = newwin(max_y - title_height, max_x / 2 + 1, title_height, width + 1);
+  file_win = newwin(max_y - title_height, (max_x / factor) - 1, title_height, 0);
+  if (SHOW_PREVIEWS)
+    preview = newwin(max_y - title_height, max_x / 2 + 1, title_height, width + 1);
   title = newwin(title_height, max_x, 0, 0);
   nodelay(file_win, 1);
 }
@@ -122,14 +124,15 @@ void update_term_dimensions() {
  * value and ends until either the safety value or the height of the screen is reached.
  * The safety value should be the size of the array. Also indeicates directories by colouring
  * and bolding them and indeicates the cursor by inverting the background and foreground colours.*/
-void print_files(WINDOW * win, struct dirent **file, const int start, const int safety) {
+void print_files(WINDOW * win, struct dirent **file_list, const int start, const int safety, int draw_cursor, int include_scrolling) {
   for (int i = start; i < start + safety && i < height + 1; i++) {
-    const struct dirent *file = files[i - start + scroll_amount];
+    include_scrolling = include_scrolling ? scroll_amount : 0;
+    const struct dirent *file = file_list[i - start + include_scrolling];
     if (is_directory(file)) {
       wattron(win, COLOR_PAIR(1));
       wattron(win, A_BOLD);
     }
-    if (i - 1 == cursor_index)
+    if (i - 1 == cursor_index && draw_cursor)
       wattron(win, A_REVERSE);
     mvwprintw(win, i, 1, file->d_name);
     wattroff(win, COLOR_PAIR(1));
@@ -152,10 +155,13 @@ void forward_dir() {
   char test[PATH_MAX];
   strcpy(test,current_directory);
   strcat(test, dir->d_name);
-  if (!opendir(test)) {
+  DIR * test_dir;
+  if (!(test_dir = opendir(test))) {
     reprint = 0;
+    closedir(test_dir);
     return;
   }
+  closedir(test_dir);
   strcat(current_directory, dir->d_name);
   strcat(current_directory, "/");
   cursor_index = 0;
@@ -185,6 +191,26 @@ void free_files(struct dirent ** file_list, int size) {
     free(file_list[i]);
   free(file_list);
 }
+
+void print_preview() {
+  if (!max || (cursor_index + scroll_amount) >= max)
+    return;
+  struct dirent *ent = files[cursor_index + scroll_amount];
+  char current_file[PATH_MAX];
+  strcpy(current_file, current_directory);
+  strcat(current_file, ent->d_name);
+  if (is_directory(ent) && SHOW_FOLDER_PREVIEWS) {
+    DIR *dir;
+    if (!(dir = opendir(current_file)))
+      return;
+    struct dirent **sub_files;
+    int limit = scandir(current_file, &sub_files, selector, compare_files);
+    closedir(dir);
+    print_files(preview, sub_files, 1, limit, 0, 0);
+    free_files(sub_files, limit);
+  }
+}
+
 
 int main(int argc, char **argv) {
   /*Initialise ncurses and global variables*/
@@ -220,13 +246,13 @@ int main(int argc, char **argv) {
       cursor_index = 0;
       scroll_amount = 0;
       int new_index = 0;
-      for (int i = 0; i < max; i++) {
+      /*for (int i = 0; i < max; i++) {
         struct dirent *d = files[i];
         if (!strcmp(d->d_name, go_to)) {
           new_index = i;
           break;
         }
-      }
+      }*/
       memset(go_to,0,strlen(go_to));
       move_cursor(new_index, 0);
     }
@@ -239,9 +265,12 @@ int main(int argc, char **argv) {
       werase(title);
       if (BORDERS) {
         box(file_win, 0, 0);
-        box(preview, 0, 0);
+        if (SHOW_PREVIEWS)
+          box(preview, 0, 0);
       }
-      print_files(file_win, files, 1, max);
+      if (SHOW_PREVIEWS)
+        print_preview();
+      print_files(file_win, files, 1, max, 1, 1);
       char progress[10];
       sprintf(progress, "[%d/%d]", cursor_index + scroll_amount + 1, max);
       int offset = strlen(current_directory) + 2;

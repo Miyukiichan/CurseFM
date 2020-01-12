@@ -32,6 +32,17 @@
  * Default 1*/
 #define WRAP_CURSOR 1
 
+/* Show any previews at all. Turning off disables the preview window and makes the
+ * file list full screen
+ * on(1)/off(0)
+ * Default 1*/
+#define SHOW_PREVIEWS 1
+
+/* Show the contents of the currently selected folder in the preview pane
+ * on(1)/off(0)
+ * Default 1*/
+#define SHOW_FOLDER_PREVIEWS 1
+
 /*KEYBINDS*/
 
 /* Exits the application

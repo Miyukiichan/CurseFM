@@ -12,7 +12,7 @@ An Ncurses file manager written in C. Ranger BTFO.
 - Colours
   - Customizable
   - Colours for different filetypes
-- File/Folder/image previews
+- File/image previews
   - Ueberzug
 - Handle symlinks
 
