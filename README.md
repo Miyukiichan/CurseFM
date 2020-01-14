@@ -24,8 +24,11 @@ Clone the repo, cd into CurseFM and run make
 - Image previews
   - Ueberzug
 - Handle symlinks
+- Watch for directory changes as opposed to reading constantly
+  - inotify
+- Handle terminal resizing better
+  - Current sigwinch attempts don't work
 
 # Bugs
 
-- Resizing the terminal window causes segfault
 - Showing hidden files during runtime retains the cursor index as opposed to locating the actual item the cursor was on

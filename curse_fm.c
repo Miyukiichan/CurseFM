@@ -7,6 +7,7 @@
 #include "sys/stat.h"
 #include "fcntl.h"
 #include "magic.h"
+#include "signal.h"
 
 #include "config.h"
 
@@ -110,19 +111,24 @@ void move_cursor(const int amount, int wrap) {
 
 /*Resize and reinitialize the main window*/
 void update_term_dimensions() {
+  wborder(file_win, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
+  wborder(preview, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
+  werase(file_win);
+  werase(preview);
+  werase(title);
+  delwin(file_win);
+  delwin(preview);
+  delwin(title);
+  getmaxyx(stdscr,max_y,max_x);
   int factor = SHOW_PREVIEWS ? 2 : 1;
   height = max_y - Y_BORDER_OFFSET;
   width = (max_x / factor) - X_BORDER_OFFSET;
-  wborder(file_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
-  if (file_win) {
-    wrefresh(file_win);
-    delwin(file_win);
-  }
   file_win = newwin(max_y - TITLE_HEIGHT, (max_x / factor), TITLE_HEIGHT, 0);
   if (SHOW_PREVIEWS)
     preview = newwin(max_y - TITLE_HEIGHT, max_x / 2 + 1, TITLE_HEIGHT, width + 1);
   title = newwin(TITLE_HEIGHT, max_x, 0, 0);
   nodelay(file_win, 1);
+  reprint = 1;
 }
 
 /* Prints files to the given window from an array of dirent pointers. Starts at a given start
@@ -251,16 +257,17 @@ int main(int argc, char **argv) {
   noecho();
   start_color();
   init_pair(1, DIR_COL, COLOR_BLACK);
-  getmaxyx(stdscr,max_y,max_x);
-  update_term_dimensions(max_y, max_x);
+  keypad(file_win, 1);
+  update_term_dimensions();
+  signal(SIGWINCH, update_term_dimensions);
   if (!getcwd(current_directory, sizeof(current_directory)))
     exit = 1;
   strcat(current_directory, "/");
   /*Main loop*/
   while (!exit) {
-    if (is_term_resized(max_y, max_x)) {
-      update_term_dimensions();
-    }
+    //if (is_term_resized(max_y, max_x)) {
+      //update_term_dimensions();
+    //}
     int old_max = max;
     max = 0;
     DIR *dir;
