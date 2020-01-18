@@ -8,6 +8,8 @@
 #include "fcntl.h"
 #include "magic.h"
 #include "signal.h"
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "config.h"
 
@@ -25,6 +27,7 @@ char go_to[PATH_MAX];
 int show_hidden = SHOW_HIDDEN;
 int reprint = 0;
 int scroll_amount = 0;
+int preview_image = 0;
 
 void open_file(char *prog, char *file) {
   int pid = fork();
@@ -125,7 +128,7 @@ void update_term_dimensions() {
   width = (max_x / factor) - X_BORDER_OFFSET;
   file_win = newwin(max_y - TITLE_HEIGHT, (max_x / factor), TITLE_HEIGHT, 0);
   if (SHOW_PREVIEWS)
-    preview = newwin(max_y - TITLE_HEIGHT, max_x / 2 + 1, TITLE_HEIGHT, width + 1);
+    preview = newwin(max_y - TITLE_HEIGHT, max_x / 2 + 1, TITLE_HEIGHT, width + 2);
   title = newwin(TITLE_HEIGHT, max_x, 0, 0);
   nodelay(file_win, 1);
   reprint = 1;
@@ -155,7 +158,7 @@ void print_files(WINDOW * win, struct dirent **file_list, const int start, const
 /* Gets the name of the current index and appends it to the current path.
  * The path is then automatically switched to in the main loop*/
 void forward_dir() {
-  if (cursor_index + scroll_amount > (max - 1))
+  if (cursor_index + scroll_amount > (max - 1) || max == 0)
     return;
   struct dirent *dir = files[cursor_index + scroll_amount];
   if (!is_directory(dir)) {
@@ -202,9 +205,24 @@ void free_files(struct dirent ** file_list, int size) {
   free(file_list);
 }
 
+void clear_image() {
+  if (preview_image) {
+    kill(preview_image, SIGTERM);
+    int status;
+    waitpid(preview_image,&status, 0);
+    int pid = fork();
+    if (!pid) {
+      execl(IMAGE_PREVIEW_CLEAR_SCRIPT, IMAGE_PREVIEW_CLEAR_SCRIPT, (char*)NULL);
+      exit(0);
+    }
+    waitpid(pid, &status, 0);
+  }
+}
+
 /* Prints a preview of the currently selected file in the preview window
  * if available*/
 void print_preview() {
+  clear_image();
   if (!max || (cursor_index + scroll_amount) >= max)
     return;
   struct dirent *ent = files[cursor_index + scroll_amount];
@@ -240,6 +258,25 @@ void print_preview() {
           i++;
         }
       fclose(stream);
+      }
+    }
+    /*Image previews*/
+    else if (strstr(mime, "image") && SHOW_IMAGE_PREVIEWS) {
+      preview_image = fork();
+      if (!preview_image) {
+        int null_fd = open("/dev/null", O_WRONLY);
+        dup2(null_fd,0);
+        dup2(null_fd,2);
+        char x[5];
+        char y[5];
+        char mx[5];
+        char my[5];
+        sprintf(x ,"%d", width + 3);
+        sprintf(y ,"%d", TITLE_HEIGHT + 1);
+        sprintf(mx ,"%d", width);
+        sprintf(my ,"%d", height - 2);
+        execl(IMAGE_PREVIEW_SCRIPT, IMAGE_PREVIEW_SCRIPT, current_file, x, y, mx, my, (char*)NULL);
+        exit(0);
       }
     }
     magic_close(magic);
@@ -345,6 +382,7 @@ int main(int argc, char **argv) {
       reprint = 0;
     usleep(5000);
   }
+  clear_image();
   endwin();
   return 0;
 }

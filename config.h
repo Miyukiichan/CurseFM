@@ -48,6 +48,19 @@
  * Default 1*/
 #define SHOW_FILE_PREVIEWS 1
 
+/* Display the currently selected image file in the preview pane
+ * on(1)/off(0)
+ * Default 1*/
+#define SHOW_IMAGE_PREVIEWS 1
+
+/* Script used for displaying image previews
+ * Default "/usr/share/curse_fm/ueberzug"*/
+#define IMAGE_PREVIEW_SCRIPT "/usr/share/curse_fm/ueberzug"
+
+/* Script used for clearing image previews
+ * Default "/usr/share/curse_fm/ueberzug_clear"*/
+#define IMAGE_PREVIEW_CLEAR_SCRIPT "/usr/share/curse_fm/ueberzug_clear"
+
 /*KEYBINDS*/
 
 /* Exits the application

@@ -5,7 +5,8 @@ An Ncurses file manager written in C. Ranger BTFO.
 # Dependencies
 
 - ncurses
-- libmagic-dev
+- libmagic-dev (mimetypes)
+- ueberzug (for image previews)
 
 # Building
 
@@ -17,12 +18,11 @@ Clone the repo, cd into CurseFM and run make
   - Retain cursor + scroll position for next/previous directories recursively
 - Navigate folders
   - Show error message if folder inaccessible
-- Copy/Cut/Paste
+- Copy/Cut/Paste/Delete
 - Colours
   - Customizable
   - Colours for different filetypes
-- Image previews
-  - Ueberzug
+- PDF previews
 - Handle symlinks
 - Watch for directory changes as opposed to reading constantly
   - inotify
