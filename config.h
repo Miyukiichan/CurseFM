@@ -61,6 +61,13 @@
  * Default "/usr/share/curse_fm/ueberzug_clear"*/
 #define IMAGE_PREVIEW_CLEAR_SCRIPT "/usr/share/curse_fm/ueberzug_clear"
 
+/* Size of the gap that separates the two main areas of the screen
+ * Typical values will be either 0(no gap) or 1(small gap) but can be
+ * arbitrary
+ * Default 1*/
+#define WINDOW_GAP 1
+
+
 /*KEYBINDS*/
 
 /* Exits the application
