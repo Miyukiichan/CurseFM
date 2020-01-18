@@ -13,10 +13,6 @@
 
 #include "config.h"
 
-#define TITLE_HEIGHT 1
-#define X_BORDER_OFFSET 2
-#define Y_BORDER_OFFSET 2 + TITLE_HEIGHT
-
 int max, cursor_index, height, width, max_x, max_y;
 char current_directory[PATH_MAX];
 WINDOW *file_win = NULL;
@@ -28,6 +24,9 @@ int show_hidden = SHOW_HIDDEN;
 int reprint = 0;
 int scroll_amount = 0;
 int preview_image = 0;
+const int title_height = 1;
+const int x_border_offset = 2;
+const int y_border_offset = 2 + title_height;
 
 void open_file(char *prog, char *file) {
   int pid = fork();
@@ -76,7 +75,7 @@ int selector(const struct dirent *ent) {
 void move_cursor(const int amount, int wrap) {
   if (amount > 0) {
     if (cursor_index + scroll_amount < ((max - 1) - (amount - 1))) {
-      if ((cursor_index + amount) > height - 1)
+      if ((cursor_index + amount) > height - title_height)
         scroll_amount += amount;
       else
         cursor_index += amount;
@@ -124,15 +123,15 @@ void update_term_dimensions() {
   delwin(title);
   getmaxyx(stdscr,max_y,max_x);
   int factor = SHOW_PREVIEWS ? 2 : 1;
-  height = max_y - Y_BORDER_OFFSET;
-  width = (max_x / factor) - X_BORDER_OFFSET;
+  height = max_y - y_border_offset;
+  width = (max_x / factor) - x_border_offset;
   int offset = 0;
   if (WINDOW_GAP < 0)
     offset = WINDOW_GAP;
-  file_win = newwin(max_y - TITLE_HEIGHT, (max_x / factor) + offset, TITLE_HEIGHT, 0);
+  file_win = newwin(max_y - title_height, (max_x / factor) + offset, title_height, 0);
   if (SHOW_PREVIEWS)
-    preview = newwin(max_y - TITLE_HEIGHT, max_x / 2 + 2 - WINDOW_GAP, TITLE_HEIGHT, width + WINDOW_GAP + 1);
-  title = newwin(TITLE_HEIGHT, max_x, 0, 0);
+    preview = newwin(max_y - title_height, max_x / 2 + 2 - WINDOW_GAP, title_height, width + WINDOW_GAP + 1);
+  title = newwin(title_height, max_x, 0, 0);
   nodelay(file_win, 1);
   reprint = 1;
 }
@@ -252,11 +251,11 @@ void print_preview() {
     mime = magic_file(magic, current_file);
     /*Text file preview*/
     if (strstr(mime, "text") && SHOW_FILE_PREVIEWS) {
-      char buff[width + X_BORDER_OFFSET];
+      char buff[width + x_border_offset];
       FILE *stream;
       if ((stream = fopen(current_file, "r"))) {
         int i = 1;
-        while (fgets(buff, width + X_BORDER_OFFSET, stream) && i < height + Y_BORDER_OFFSET) {
+        while (fgets(buff, width + x_border_offset, stream) && i < height + y_border_offset) {
           mvwprintw(preview, i, 1, buff);
           i++;
         }
@@ -275,7 +274,7 @@ void print_preview() {
         char mx[5];
         char my[5];
         sprintf(x ,"%d", width + 2 + WINDOW_GAP);
-        sprintf(y ,"%d", TITLE_HEIGHT + 1);
+        sprintf(y ,"%d", title_height + 1);
         sprintf(mx ,"%d", width - WINDOW_GAP + 1);
         sprintf(my ,"%d", height - 2);
         execl(IMAGE_PREVIEW_SCRIPT, IMAGE_PREVIEW_SCRIPT, current_file, x, y, mx, my, (char*)NULL);
