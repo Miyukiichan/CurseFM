@@ -28,6 +28,10 @@ Clone the repo, cd into CurseFM and run make
   - inotify
 - Handle terminal resizing better
   - Current sigwinch attempts don't work
+- Statusbar show/hide
+- Statusbar modules
+  - Some built in already but should be able to show/hide them
+  - Custom modules that are read from the standard output of other programs or scripts such as date/time
 
 # Bugs
 
