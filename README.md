@@ -36,4 +36,4 @@ Clone the repo, cd into CurseFM and run make
 
 # Bugs
 
-- Showing hidden files during runtime retains the cursor index as opposed to locating the actual item the cursor was on
+- Printing certain files in the preview causes segfault for some unknown reason

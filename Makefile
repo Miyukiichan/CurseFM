@@ -3,7 +3,7 @@ PREFIX = /usr
 BINDIR = $(PREFIX)/bin
 SHARE = /usr/share/curse_fm
 default:
-	gcc -o $(PROG) curse_fm.c -lncurses -lmagic
+	gcc -o $(PROG) curse_fm.c -lncursesw -lmagic
 clean:
 	rm $(PROG)
 install:

@@ -258,6 +258,7 @@ void print_preview() {
         while (fgets(buff, width + x_border_offset, stream) && i < height + y_border_offset) {
           mvwprintw(preview, i, 1, buff);
           i++;
+          memset(buff, '0', width + x_border_offset);
         }
       fclose(stream);
       }
@@ -321,15 +322,20 @@ int main(int argc, char **argv) {
       cursor_index = 0;
       scroll_amount = 0;
       int new_index = 0;
-      /*for (int i = 0; i < max; i++) {
+      for (int i = 0; i < max; i++) {
         struct dirent *d = files[i];
         if (!strcmp(d->d_name, go_to)) {
           new_index = i;
           break;
         }
-      }*/
+      }
       memset(go_to,0,strlen(go_to));
-      move_cursor(new_index, 0);
+      if (new_index > height - 1) {
+        cursor_index = height - 1;
+        scroll_amount = new_index - cursor_index;
+      }
+      else
+        cursor_index = new_index;
     }
     /*Print the directory contents only when necessary*/
     if (reprint || max != old_max) {
@@ -374,7 +380,7 @@ int main(int argc, char **argv) {
       backward_dir();
     else if (!strcmp(ch, TOGGLE_HIDDEN_KEY)) {
       show_hidden = !show_hidden;
-      //strcpy(go_to, files[cursor_index + scroll_amount]->d_name);
+      strcpy(go_to, files[cursor_index + scroll_amount]->d_name);
     }
     else if (!strcmp(ch, PAGE_DOWN_KEY))
       move_cursor(height - 1, 0);
