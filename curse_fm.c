@@ -13,7 +13,7 @@
 
 #include "config.h"
 
-int max, cursor_index, height, width, max_x, max_y;
+int max, cursor_index, height, width, max_x = 0, max_y = 0;
 char current_directory[PATH_MAX];
 WINDOW *file_win = NULL;
 WINDOW *preview = NULL;
@@ -109,31 +109,6 @@ void move_cursor(const int amount, int wrap) {
       }
     }
   }
-}
-
-/*Resize and reinitialize the main window*/
-void update_term_dimensions() {
-  wborder(file_win, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
-  wborder(preview, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
-  werase(file_win);
-  werase(preview);
-  werase(title);
-  delwin(file_win);
-  delwin(preview);
-  delwin(title);
-  getmaxyx(stdscr,max_y,max_x);
-  int factor = SHOW_PREVIEWS ? 2 : 1;
-  height = max_y - y_border_offset;
-  width = (max_x / factor) - x_border_offset;
-  int offset = 0;
-  if (WINDOW_GAP < 0)
-    offset = WINDOW_GAP;
-  file_win = newwin(max_y - title_height, (max_x / factor) + offset, title_height, 0);
-  if (SHOW_PREVIEWS)
-    preview = newwin(max_y - title_height, max_x / 2 + 2 - WINDOW_GAP, title_height, width + WINDOW_GAP + 1);
-  title = newwin(title_height, max_x, 0, 0);
-  nodelay(file_win, 1);
-  reprint = 1;
 }
 
 /* Prints files to the given window from an array of dirent pointers. Starts at a given start
@@ -274,9 +249,9 @@ void print_preview() {
         char y[5];
         char mx[5];
         char my[5];
-        sprintf(x ,"%d", width + 2 + WINDOW_GAP);
+        sprintf(x ,"%d", width + 3 + WINDOW_GAP);
         sprintf(y ,"%d", title_height + 1);
-        sprintf(mx ,"%d", width - WINDOW_GAP + 1);
+        sprintf(mx ,"%d", width - WINDOW_GAP);
         sprintf(my ,"%d", height - 2);
         execl(IMAGE_PREVIEW_SCRIPT, IMAGE_PREVIEW_SCRIPT, current_file, x, y, mx, my, (char*)NULL);
         exit(0);
@@ -297,17 +272,33 @@ int main(int argc, char **argv) {
   noecho();
   start_color();
   init_pair(1, DIR_COL, COLOR_BLACK);
-  keypad(file_win, 1);
-  update_term_dimensions();
-  signal(SIGWINCH, update_term_dimensions);
   if (!getcwd(current_directory, sizeof(current_directory)))
     exit = 1;
   strcat(current_directory, "/");
   /*Main loop*/
   while (!exit) {
-    //if (is_term_resized(max_y, max_x)) {
-      //update_term_dimensions();
-    //}
+    int new_x, new_y;
+    getmaxyx(stdscr, new_y, new_x);
+    if (new_x != max_x || new_y != max_y) {
+      max_x = new_x;
+      max_y = new_y;
+      reprint = 1;
+      int factor = SHOW_PREVIEWS ? 2 : 1;
+      height = max_y - y_border_offset;
+      width = (max_x / factor) - x_border_offset;
+      if (file_win)
+        wclear(file_win);
+      if (preview)
+        wclear(preview);
+      if (title)
+        wclear(title);
+      wclear(stdscr);
+      file_win = newwin(max_y - title_height, (max_x / factor) - WINDOW_GAP + 2, title_height, 0);
+      if (SHOW_PREVIEWS)
+        preview = newwin(max_y - title_height, width + 2 - WINDOW_GAP + 1, title_height, width + 2 + WINDOW_GAP);
+      title = newwin(title_height, max_x, 0, 0);
+      nodelay(file_win, 1);
+    }
     int old_max = max;
     max = 0;
     DIR *dir;
@@ -364,6 +355,8 @@ int main(int argc, char **argv) {
     /*Key input*/
     char c = wgetch(file_win);
     const char * ch = keyname(c);
+    if (!ch)
+      continue;
     if (!strcmp(ch, EXIT_KEY))
       exit = 1;
     else if (!strcmp(ch, CURSOR_UP_KEY))

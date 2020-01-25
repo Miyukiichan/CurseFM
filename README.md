@@ -16,8 +16,6 @@ Clone the repo, cd into CurseFM and run make
 
 ## Must
 
-- Handle terminal resizing better
-  - Current sigwinch attempts don't work
 - Copy/Cut/Paste/Delete
 - Handle symlinks
 
