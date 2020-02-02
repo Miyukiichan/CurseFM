@@ -16,6 +16,7 @@ Clone the repo, cd into CurseFM and run make
 
 ## Must
 
+- Highlight multiple files for bulk manipulation
 - Copy/Cut/Paste/Delete
 - Handle symlinks
 

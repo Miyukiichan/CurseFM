@@ -67,6 +67,11 @@
  * Default 1*/
 #define WINDOW_GAP 1
 
+/* Show a confirmation alert when deleting a file
+ * on(1)/off(0)
+ * Default 1*/
+#define CONFIRM_ON_DELETE 1
+
 
 /*KEYBINDS*/
 
@@ -115,4 +120,16 @@
  * page height the cursor moves to the bottom.
  * Default "^D" (Ctrl + d)*/
 #define PAGE_DOWN_KEY "^D"
+
+/* Delete the current file or the file in the highlighted selection list
+ * Default "D"*/
+#define DELETE_FILE "D"
+
+/* Highlights the current file and adds it to the current selection list
+ * Default " " (spacebar)*/
+#define HIGHLIGHT_KEY " "
+
+/* Clears the list of highlighted files
+ * DEFAULT "c"*/
+#define CLEAR_SELECTION "c"
 
