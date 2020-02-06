@@ -196,6 +196,18 @@ void clear_image() {
   }
 }
 
+/* Takes a file stream and prints it to the preview pane.
+ * Finishes either when the pane is full or the sream is empty*/
+void print_file_stream(FILE *stream) {
+  int i = 1;
+  char buff[width + x_border_offset];
+  while (fgets(buff, width + x_border_offset, stream) && i < height + y_border_offset) {
+    mvwprintw(preview, i, 1, buff);
+    i++;
+    memset(buff, '0', width + x_border_offset);
+  }
+}
+
 /* Prints a preview of the currently selected file in the preview window
  * if available*/
 void print_preview() {
@@ -226,16 +238,10 @@ void print_preview() {
     mime = magic_file(magic, current_file);
     /*Text file preview*/
     if (strstr(mime, "text") && SHOW_FILE_PREVIEWS) {
-      char buff[width + x_border_offset];
       FILE *stream;
       if ((stream = fopen(current_file, "r"))) {
-        int i = 1;
-        while (fgets(buff, width + x_border_offset, stream) && i < height + y_border_offset) {
-          mvwprintw(preview, i, 1, buff);
-          i++;
-          memset(buff, '0', width + x_border_offset);
-        }
-      fclose(stream);
+        print_file_stream(stream);
+        fclose(stream);
       }
     }
     /*Image previews*/
@@ -256,6 +262,14 @@ void print_preview() {
         execl(IMAGE_PREVIEW_SCRIPT, IMAGE_PREVIEW_SCRIPT, current_file, x, y, mx, my, (char*)NULL);
         exit(0);
       }
+    }
+    /*Media previews*/
+    else if ((strstr(mime, "audio") || strstr(mime, "video")) && SHOW_MEDIA_PREVIEWS) {
+      char command[PATH_MAX + 50];
+      sprintf(command, "%s \"%s\"", MEDIA_PREVIEW_COMMAND, current_file);
+      FILE *stream = popen(command, "r");
+      print_file_stream(stream);
+      pclose(stream);
     }
     magic_close(magic);
   }

@@ -5,8 +5,9 @@ An Ncurses file manager written in C. Ranger BTFO.
 # Dependencies
 
 - ncurses
-- libmagic-dev (mimetypes)
-- ueberzug (for image previews)
+- libmagic-dev - mimetypes for previewing files
+- ueberzug - image previews
+- mediainfo - media file previews
 
 # Building
 
@@ -16,9 +17,12 @@ Clone the repo, cd into CurseFM and run make
 
 ## Must
 
+- Popup prompts for entering text or saying yes/no or just showing warnings
+- Create new files
+- Copy/Cut/Paste/Delete files
 - Highlight multiple files for bulk manipulation
-- Copy/Cut/Paste/Delete
 - Handle symlinks
+- Custom scripts bound to key presses
 
 ## Should
 
@@ -44,3 +48,5 @@ Clone the repo, cd into CurseFM and run make
 # Bugs
 
 - Printing certain files in the preview causes segfault for some unknown reason
+- Media previews are slow
+- Resizing the window does not reset the scrolling amount to match the current index in the file list. It just goes off the screen

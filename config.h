@@ -32,6 +32,20 @@
  * Default 1*/
 #define WRAP_CURSOR 1
 
+/* Size of the gap that separates the two main areas of the screen
+ * Typical values will be either 0(no gap) or 1(small gap) but can be
+ * arbitrary
+ * Default 1*/
+#define WINDOW_GAP 1
+
+/* Show a confirmation alert when deleting a file
+ * on(1)/off(0)
+ * Default 1*/
+#define CONFIRM_ON_DELETE 1
+
+
+/*PREVIEWS*/
+
 /* Show any previews at all. Turning off disables the preview window and makes the
  * file list full screen
  * on(1)/off(0)
@@ -53,6 +67,16 @@
  * Default 1*/
 #define SHOW_IMAGE_PREVIEWS 1
 
+/* Display the currently selected media file in the preview pane
+ * on(1)/off(0)
+ * Default 1*/
+#define SHOW_MEDIA_PREVIEWS 1
+
+/* Program used to preview media files
+ * Needs to output info as text to stdout
+ * Default "mediainfo"*/
+#define MEDIA_PREVIEW_COMMAND "mediainfo"
+
 /* Script used for displaying image previews
  * Default "/usr/share/curse_fm/ueberzug"*/
 #define IMAGE_PREVIEW_SCRIPT "/usr/share/curse_fm/ueberzug"
@@ -60,17 +84,6 @@
 /* Script used for clearing image previews
  * Default "/usr/share/curse_fm/ueberzug_clear"*/
 #define IMAGE_PREVIEW_CLEAR_SCRIPT "/usr/share/curse_fm/ueberzug_clear"
-
-/* Size of the gap that separates the two main areas of the screen
- * Typical values will be either 0(no gap) or 1(small gap) but can be
- * arbitrary
- * Default 1*/
-#define WINDOW_GAP 1
-
-/* Show a confirmation alert when deleting a file
- * on(1)/off(0)
- * Default 1*/
-#define CONFIRM_ON_DELETE 1
 
 
 /*KEYBINDS*/
