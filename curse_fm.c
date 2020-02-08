@@ -100,8 +100,8 @@ void move_cursor(const int amount, int wrap) {
     }
     else {
       if (wrap) {
-        cursor_index = (max - 1) > height ? height - 1 : max - 1;
-        scroll_amount = (max - 1) > height ? max - height : 0;
+        cursor_index = max > height ? height - 1 : max - 1;
+        scroll_amount = max > height ? max - height : 0;
       }
       else {
         cursor_index = 0;
