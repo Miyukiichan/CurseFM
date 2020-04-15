@@ -2,12 +2,18 @@
 
 An Ncurses file manager written in C. Ranger BTFO.
 
+Very much a work in progress. Just something I do for fun. Don't expect to be completely done.
+
+This also slighlty doubles up as a stab at an ncurses widget library.
+
 # Dependencies
 
 - ncurses
 - libmagic-dev - mimetypes for previewing files
-- ueberzug - image previews
-- mediainfo - media file previews
+- ueberzug - image previews (optional)
+- mediainfo - media file previews (optional)
+
+Any optional dependancies are not required at compile time and can be disabled in the configuration file.
 
 # Building
 
