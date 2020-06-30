@@ -1,6 +1,6 @@
 # CurseFM
 
-An Ncurses file manager written in C. Ranger BTFO.
+An Ncurses file manager written in C. Useful for basic navigation as well as previewing and opening files from the terminal.
 
 Very much a work in progress. Just something I do for fun. Don't expect to be completely done.
 
@@ -8,7 +8,7 @@ This also slighlty doubles up as a stab at an ncurses widget library.
 
 # Dependencies
 
-- ncurses
+- ncurses - core UI
 - libmagic-dev - mimetypes for previewing files
 - ueberzug - image previews (optional)
 - mediainfo - media file previews (optional)
